@@ -97,16 +97,18 @@ var container;
 var width = window.innerWidth;
 var height = window.innerHeight;
 var renderer, scene, camera, controls, stats, light;
+var dirLightA, dirLightB, dirLightC;
+var sky;
 var clock = new THREE.Clock();
 
 var mouse = new THREE.Vector2();
-// var keyboard = new KeyboardState();
+var keyboard = new KeyboardState();
 
 var rabbitWidth, rabbitHeight;
 var rabbits = [];
 var rabbit;
 
-var timeNumber, timeClock;
+var timeNumber, timeClocks = [];
 
 var chocoNumber, chocoGeo, chocoMat, chocos = [];
 var groundGeo, groundMat, ground;
@@ -114,11 +116,57 @@ var maze;
 var cupGeo, cupTexture, cupMat, cup;
 var spoonGeo, spoonTexture, spoonMat, spoon;
 var plateGeo, plateTexture, plateMate, plate;
-var sugars = [];
+var sugarA, sugarB, sugarC;
+var cookie, cookieArmA, cookieArmB, cookieLegA, cookieLegB, cookieTexture;
+var cookieSwing = true;
+var lollipop;
+var clouds = [];
+
+var cookieSpacePress1st = false;
+var cookieSpacePress2nd = false;
+var cookieSpacePress3rd = false;
+var cookieSpacePress4th = false;
+var cookieSpacePress5th = false;
+var cookieSpacePress6th = false;
+var cookieSpacePress7th = false;
+var cookieSpacePress8th = false;
+var cookieSpacePress9th = false;
+var cookieSpacePress10th = false;
+var cookieSpacePress11th = false;
+var cookieSpacePress12th = false;
+var cookieSpacePress13th = false;
+var cookieSpacePress14th = false;
+var cookieSpacePress15th = false;
+
+var rabbitPress1st = false;
+var rabbitPress2nd = false;
+var rabbitPress3rd = false;
+var rabbitPress4th = false;
+var rabbitPress5th = false;
+var rabbitPress6th = false;
+var rabbitPress7th = false;
+var rabbitPress8th = false;
+var rabbitPress9th = false;
+var rabbitPress10th = false;
+var rabbitPress11th = false;
+var rabbitPress12th = false;
+var rabbitPress13th = false;
+var rabbitPress14th = false;
+var rabbitPress15th = false;
+
+
+var text;
+var textOther;
+
 
 var dropSpeed = 2;
 
 var dummyGeo, dummyMat, dummy;
+
+var thinker;
+var think;			//animator
+
+var decreaseLight = true;
 
 
 
@@ -129,6 +177,8 @@ var amplitude = 3;
 var offset = 0;
 var tanWave = new TanWave(time, frequency, amplitude, offset);
 var sinWave = new SinWave(time, frequency*5, amplitude/2, offset);
+var sinWaveSlowA = new SinWave(time, frequency*2, amplitude/2, offset);
+var sinWaveSlowB = new SinWave(time*2, frequency*2, amplitude/2, offset);
 var spin;
 
 
@@ -165,7 +215,11 @@ function init(){
 
 	//Web Audio API
 	bufferLoader = new BufferLoader(
-		context, ['../audios/The Coffee Song.mp3', '../audios/giggle.mp3'], finishedLoading
+		context, ['../audios/Hell Around The Corner.mp3', 
+				  '../audios/giggle.mp3', 
+				  '../audios/wind_houling.mp3', 
+				  '../audios/crackles.mp3'], 
+				  finishedLoading
 		);
 	bufferLoader.load();
 
@@ -175,10 +229,10 @@ function init(){
 	document.body.appendChild(container);
 
 	scene = new THREE.Scene();
+	// scene.fog = new THREE.FogExp2( 0xffec82, 0.01 );
+
 	camera = new THREE.PerspectiveCamera(45, width/height, 0.1, 100000);
-	// camera.position.z = 10;
-	// camera.position.set(92,183,73);
-	// camera.rotation.set(0.199,0.965,-0.164);
+	// camera.position.set(17.4, 0, 43.5);
 	// camera.lookAt(scene.position);
 
 	//CONTROLS
@@ -194,20 +248,66 @@ function init(){
 	stats.domElement.children[ 0 ].children[1].style.display = "none";
 	container.appendChild(stats.domElement);
 
-	light = new THREE.DirectionalLight(0xffffff);
-	light.position.set(0,1,0);
+	dirLightA = new THREE.DirectionalLight(0xffffff);
+	dirLightA.position.set(0,1,0);
+	scene.add(dirLightA);
+
+	dirLightB = new THREE.DirectionalLight(0xffec82);
+	dirLightB.position.set(0,1,1);
+	scene.add(dirLightB);
+
+	dirLightC = new THREE.DirectionalLight(0x02b53e);
+	dirLightC.position.set(0,1,0);
+	scene.add(dirLightC);
+
+	light = new THREE.DirectionalLight(0x94eaeb);
+	light.position.set(7.3,1,2.1);
+	light.target.position.set(8,0,2)
 	scene.add(light);
 
-	// light = new THREE.DirectionalLight(0xffec82);
-	// light.position.set(-1,-1,-1);
+	//AMBIENT
+	light = new THREE.AmbientLight(0xffffff);
 	// scene.add(light);
 
+
 	renderer = new THREE.WebGLRenderer( {antialias: true} );
-	renderer.setClearColor(0xffffff, 1);
+	// renderer.setClearColor(0x502911, 1);
 	renderer.setSize(width,height);
 
 	container.appendChild(renderer.domElement);
 	window.addEventListener( 'resize', onWindowResize, false );
+
+
+	//SKY
+	var urls = [
+		'img/sky/pos_x.png',
+		'img/sky/neg_x.png',
+		'img/sky/pos_y.png',
+		'img/sky/neg_y.png',
+		'img/sky/pos_z.png',
+		'img/sky/neg_z.png'
+	];
+	var skyTexture = THREE.ImageUtils.loadTextureCube(urls);
+	skyTexture.format = THREE.RGBFormat;
+
+	var skyShader = THREE.ShaderLib["cube"];
+	skyShader.uniforms["tCube"].value = skyTexture;
+
+	var skyMat = new THREE.ShaderMaterial({
+		fragmentShader: skyShader.fragmentShader,
+		vertexShader: skyShader.vertexShader,
+		uniforms: skyShader.uniforms,
+		depthWrite: false,
+		side: THREE.BackSide
+	});
+
+	var skyGeo = new THREE.CubeGeometry(1000, 1000, 1000);
+	sky = new THREE.Mesh(skyGeo, skyMat);
+	// sky.scale.set(-1,1,1);
+	// sky.eulerOrder = 'XZY';
+	// sky.renderDepth = 1000.0;
+	scene.add(sky);
+
 
 
 	//model
@@ -223,11 +323,11 @@ function init(){
 	loadModelR("rabbit.js", modelMaterial);
 
 	//CLOCK
-	timeNumber = 1;
-	// timeTexture = THREE.ImageUtils.loadTexture('img/clock.png');
+	// timeNumber = 1;
+	timeTexture = THREE.ImageUtils.loadTexture('img/clock.png');
 	// timeTexture.needsUpdate = true;
-	// modelMaterial = new THREE.MeshLambertMaterial( {map: timeTexture} );
-	// loadModelT("clock.js", modelMaterial);
+	modelMaterial = new THREE.MeshLambertMaterial( {map: timeTexture} );
+	loadModelT("clock.js", modelMaterial);
 
 	//MAZE
 	maze = new THREE.Geometry();
@@ -237,17 +337,92 @@ function init(){
 	loadModelC("choco.js","choco90.js","choco180.js","choco270.js", modelMaterial);
 
 	//COFFEE
-	cupTexture = THREE.ImageUtils.loadTexture('img/cup.png');
-	modelMaterial = new THREE.MeshLambertMaterial( {map: timeTexture} );
-	loadModelT("models/coffee_cup.js", modelMaterial);
+	cupTexture = THREE.ImageUtils.loadTexture('img/coffee.png');
+	modelMaterial = new THREE.MeshLambertMaterial( {map: cupTexture} );
+	loadModelCup("models/coffee_cup.js", modelMaterial);
 
-	plateTexture = THREE.ImageUtils.loadTexture('img/plate.png');
-	modelMaterial = new THREE.MeshLambertMaterial( {map: timeTexture} );
-	loadModelT("models/coffee_plate.js", modelMaterial);
+	// plateTexture = THREE.ImageUtils.loadTexture('img/plate.png');
+	// modelMaterial = new THREE.MeshLambertMaterial( {map: plateTexture} );
+	// loadModelPlate("models/coffee_plate.js", modelMaterial);
 
 	spoonTexture = THREE.ImageUtils.loadTexture('img/spoon.png');
-	modelMaterial = new THREE.MeshLambertMaterial( {map: timeTexture} );
-	loadModelT("models/coffee_spoon.js", modelMaterial);
+	modelMaterial = new THREE.MeshLambertMaterial( {map: spoonTexture} );
+	loadModelSpoon("models/coffee_spoon.js", modelMaterial);
+
+	modelMaterial = new THREE.MeshLambertMaterial( {color: 0xffffff} );
+	loadModelSugar("models/coffee_sugarA.js","models/coffee_sugarB.js","models/coffee_sugarC.js", modelMaterial);
+
+	//COOKIE
+	cookieTexture = THREE.ImageUtils.loadTexture('img/cookie.png');
+	modelMaterial = new THREE.MeshLambertMaterial( {map: cookieTexture} );
+	loadmodelCookie("models/cookie.js","models/cookieArmA.js","models/cookieArmB.js","models/cookieLegA.js","models/cookieLegB.js",modelMaterial);
+
+	//LOLLIPOP
+	for(var i=0; i<20; i++){
+		var lollipopGeo = new THREE.PlaneGeometry(3,3,1,1);
+		var lollipopTexture = THREE.ImageUtils.loadTexture('img/lollipopA.png');
+		modelMaterial = new THREE.MeshLambertMaterial({map: lollipopTexture, transparent: true, opacity: 1, side: THREE.DoubleSide});
+		lollipop = new THREE.Mesh(lollipopGeo, modelMaterial);
+		lollipop.position.x = Math.random()*80-40;
+		lollipop.position.z = Math.random()*20+30;
+		lollipop.position.y = -2;
+		lollipop.rotation.y = Math.random();
+
+		scene.add(lollipop);
+
+		lollipopTexture = THREE.ImageUtils.loadTexture('img/lollipopB.png');
+		modelMaterial = new THREE.MeshLambertMaterial({map: lollipopTexture, transparent: true, opacity: 1, side: THREE.DoubleSide});
+		lollipop = new THREE.Mesh(lollipopGeo, modelMaterial);
+		lollipop.position.x = Math.random()*80-40;
+		lollipop.position.z = Math.random()*20+30;
+		lollipop.position.y = -2;
+		lollipop.rotation.y = Math.random();
+
+		scene.add(lollipop);
+	}
+
+	//Cloud
+	for(var i=0; i<30; i++){
+		var cloudGeo = new THREE.PlaneGeometry(4,4,1,1);
+		var cloudTexture = THREE.ImageUtils.loadTexture('img/cloudA.png');
+		modelMaterial = new THREE.MeshBasicMaterial({map: cloudTexture, transparent: true, opacity: 1, side: THREE.DoubleSide});
+		clouds[i] = new THREE.Mesh(cloudGeo, modelMaterial);
+		clouds[i].position.x = Math.random()*100-40;
+		clouds[i].position.z = Math.random()*100-40;
+		clouds[i].position.y = Math.random()*15+11;
+		clouds[i].rotation.x = Math.PI/2;
+		clouds[i].rotation.y = -Math.PI;
+
+		scene.add(clouds[i]);
+
+		cloudTexture = THREE.ImageUtils.loadTexture('img/cloudB.png');
+		modelMaterial = new THREE.MeshBasicMaterial({map: cloudTexture, transparent: true, opacity: 1, side: THREE.DoubleSide});
+		clouds[i+30] = new THREE.Mesh(cloudGeo, modelMaterial);
+		clouds[i+30].position.x = Math.random()*100-40;
+		clouds[i+30].position.z = Math.random()*100-40;
+		clouds[i+30].position.y = Math.random()*15+11;
+		clouds[i+30].rotation.x = Math.PI/2;
+		clouds[i+30].rotation.y = -Math.PI;
+
+		scene.add(clouds[i+30]);
+	}
+
+	//THINK
+	// var thinkTexture = new THREE.ImageUtils.loadTexture('img/run.png');
+	// thinkTexture.needsUpdate = true;
+
+	// think = new TextureAnimator(thinkTexture, 10, 1, 10, 45);
+	// // think.needsUpdate = true;
+
+	// var thinkMat = new THREE.MeshBasicMaterial({map: thinkTexture, side: THREE.DoubleSide});
+	// thinkMat.needsUpdate = true;
+	// thinkMat.map.needsUpdate = true;
+
+
+	// var thinkGeo = new THREE.PlaneGeometry(50,50,1,1);
+	// thinker = new THREE.Mesh(thinkGeo, thinkMat);
+	// thinker.position.set(25.5, 1, 22);
+	// scene.add(thinker);
 
 
 	//GROUND
@@ -262,7 +437,12 @@ function init(){
 
 	//PointerLockControl
 	pointerControls = new THREE.PointerLockControls(camera);
+
 	scene.add( pointerControls.getObject() );
+
+
+	// pointerControls.setPosX(17.4);
+	// pointerControls.setPoxZ(43.5);
 
 	rays[0] = new THREE.Raycaster();
 	rays[1] = new THREE.Raycaster();
@@ -280,6 +460,18 @@ function init(){
 	dummyMat = new THREE.MeshBasicMaterial({color: 0x00ffff});
 	dummy = new THREE.Mesh(dummyGeo, dummyMat);
 	scene.add(dummy);
+
+
+	//TEXT
+	textOther = document.createElement('div');
+	document.body.appendChild(textOther);
+	textOther.id = 'other';
+	textOther.innerHTML = '';
+
+	text = document.createElement('div');
+	document.body.appendChild(text);
+	text.id = 'stop';
+	text.innerHTML = '';
 
 }
 
@@ -322,16 +514,196 @@ function loadModelR (model, meshMat) {
 	// return group;
 }
 
+function loadModelCup (model, meshMat) {
+
+	var material = meshMat;
+	var loader = new THREE.JSONLoader();
+
+	loader.load(model, function(geometry){
+				
+		cup = new THREE.Mesh(geometry, material);
+
+		cup.scale.set(2,2,2);
+		cup.position.x = 13.2;
+		cup.position.z = 2.2;
+		cup.position.y = -3;
+		cup.rotation.y = (Math.PI);
+
+		scene.add(cup);
+			
+	}, "js");
+}
+
+function loadModelPlate (model, meshMat) {
+
+	var material = meshMat;
+	var loader = new THREE.JSONLoader();
+
+	loader.load(model, function(geometry){
+				
+		plate = new THREE.Mesh(geometry, material);
+
+		plate.scale.set(2,2,2);
+		plate.position.x = 13.2;
+		plate.position.z = 2.2;
+		plate.position.y = -2;
+		// plate.rotation.y = (Math.PI);
+
+		scene.add(plate);
+			
+	}, "js");
+}
+
+function loadModelSpoon (model, meshMat) {
+
+	var material = meshMat;
+	var loader = new THREE.JSONLoader();
+
+	loader.load(model, function(geometry){
+				
+		spoon = new THREE.Mesh(geometry, material);
+
+		spoon.scale.set(2,2,2);
+		spoon.position.x = 13.2;
+		spoon.position.z = 2.2;
+		spoon.position.y = -3;
+		spoon.rotation.y = (Math.PI);
+
+		scene.add(spoon);
+			
+	}, "js");
+}
+
+function loadModelSugar (model, model2, model3, meshMat) {
+
+	
+	var loader = new THREE.JSONLoader();
+
+	loader.load(model, function(geometry){
+		var materialA = new THREE.MeshLambertMaterial({color: 0xff0000});
+		sugarA = new THREE.Mesh(geometry, materialA);
+
+		sugarA.scale.set(2,2,2);
+		sugarA.position.x = 13.2;
+		sugarA.position.z = 2.2;
+		sugarA.position.y = -3;
+		sugarA.rotation.y = (Math.PI);
+
+		scene.add(sugarA);
+			
+	}, "js");
+
+	
+	loader.load(model2, function(geometry){
+
+		var materialB = new THREE.MeshLambertMaterial({color: 0x00ff00});
+		sugarB = new THREE.Mesh(geometry, materialB);
+
+		sugarB.scale.set(2,2,2);
+		sugarB.position.x = 13.2;
+		sugarB.position.z = 2.2;
+		sugarB.position.y = -3;
+		sugarB.rotation.y = (Math.PI);
+
+		scene.add(sugarB);
+
+	}, "js");
+
+	
+	loader.load(model3, function(geometry){
+
+		var materialC = new THREE.MeshLambertMaterial({color: 0x0000ff});
+		sugarC = new THREE.Mesh(geometry, materialC);
+
+		sugarC.scale.set(2,2,2);
+		sugarC.position.x = 13.2;
+		sugarC.position.z = 2.2;
+		sugarC.position.y = -3;
+		sugarC.rotation.y = (Math.PI);
+
+		scene.add(sugarC);
+			
+	}, "js");
+}
+
+function loadmodelCookie (model, model2, model3, model4, model5, meshMat) {
+
+	var material = meshMat;
+	var loader = new THREE.JSONLoader();
+
+	loader.load(model, function(geometry){
+
+		cookie = new THREE.Mesh(geometry, material);
+		cookie.castShadow = true;
+
+		// cookie.scale.set(2,2,2);
+		cookie.position.x = 23;
+		cookie.position.z = 30;
+		cookie.position.y = 1;
+		cookie.rotation.y = -(Math.PI)/1.7;
+		cookie.rotation.x = -0.2;
+
+		scene.add(cookie);
+			
+	}, "js");
+
+	loader.load(model2, function(geometry){
+
+		cookieArmA = new THREE.Mesh(geometry, material);
+
+		// cookieArmA.scale.set(2,2,2);
+		cookieArmA.position.x = 23;
+		cookieArmA.position.z = 30;
+		cookieArmA.position.y = 1;
+		cookieArmA.rotation.y = -(Math.PI)/1.7;
+		scene.add(cookieArmA);
+
+	}, "js");
+
+	loader.load(model3, function(geometry){
+
+		cookieArmB = new THREE.Mesh(geometry, material);
+
+		// cookieArmB.scale.set(2,2,2);
+		cookieArmB.position.x = 23;
+		cookieArmB.position.z = 30;
+		cookieArmB.position.y = 1;
+		cookieArmB.rotation.y = -(Math.PI)/1.7;
+		scene.add(cookieArmB);
+			
+	}, "js");
+
+	loader.load(model4, function(geometry){
+
+		cookieLegA = new THREE.Mesh(geometry, material);
+
+		// cookieLegA.scale.set(2,2,2);
+		cookieLegA.position.x = 23;
+		cookieLegA.position.z = 30;
+		cookieLegA.position.y = 1;
+		cookieLegA.rotation.y = (Math.PI)/2;
+		scene.add(cookieLegA);
+			
+	}, "js");
+
+	loader.load(model5, function(geometry){
+
+		cookieLegB = new THREE.Mesh(geometry, material);
+
+		// cookieLegB.scale.set(2,2,2);
+		cookieLegB.position.x = 23;
+		cookieLegB.position.z = 30;
+		cookieLegB.position.y = 1;
+		cookieLegB.rotation.y = (Math.PI)/2;
+		scene.add(cookieLegB);
+			
+	}, "js");
+}
+
 var timesMesh, timesGeo, timesGroup, timeTexture;
 
 function loadModelT (model, meshMat) {
 
-	// var group = new THREE.Object3D();
-
-	// var material = meshMat || new THREE.MeshBasicMaterial({
-	// 	color: '0x' + Math.floor(Math.random()*16777215).toString(16),
-	// 	wireframe: true
-	// });
 	var material = meshMat;
 	var loader = new THREE.JSONLoader();
 
@@ -340,10 +712,20 @@ function loadModelT (model, meshMat) {
 		timesMesh = new THREE.Mesh(geometry);
 		timesGeo = new THREE.Geometry();
 
-		timeClock = new THREE.Mesh(geometry, material);
-		timeClock.scale.set(20,20,20);
-		timeClock.position.set(0,180,0);
-		scene.add(timeClock);
+		timeClocks[0] = new THREE.Mesh(geometry, material);
+		// timeClock.scale.set(20,20,20);
+		timeClocks[0].position.set(25.5, 1, 22);
+		scene.add(timeClocks[0]);
+
+		timeClocks[1] = new THREE.Mesh(geometry, material);
+		// timeClock.scale.set(20,20,20);
+		timeClocks[1].position.set(-19, 1, 15);
+		scene.add(timeClocks[1]);
+
+		timeClocks[2] = new THREE.Mesh(geometry, material);
+		// timeClock.scale.set(20,20,20);
+		timeClocks[2].position.set(12, 1, -16);
+		scene.add(timeClocks[2]);
 
 	}, "js");
 
@@ -698,33 +1080,104 @@ function loadModelC (model, model2, model3, model4, meshMat) {
 }
 
 
+//FROM_Stemkoski
+//http://stemkoski.github.io/Three.js/Texture-Animation.html
+function TextureAnimator(texture, tilesHoriz, tilesVert, numTiles, tileDispDuration) 
+{	
+	// note: texture passed by reference, will be updated by the update function.
+		
+	this.tilesHorizontal = tilesHoriz;
+	this.tilesVertical = tilesVert;
+	// how many images does this spritesheet contain?
+	//  usually equals tilesHoriz * tilesVert, but not necessarily,
+	//  if there at blank tiles at the bottom of the spritesheet. 
+	this.numberOfTiles = numTiles;
+	// texture.needsUpdate = true;
+	texture.wrapS = texture.wrapT = THREE.RepeatWrapping; 
+	texture.repeat.set( 1 / this.tilesHorizontal, 1 / this.tilesVertical );
+
+	// how long should each image be displayed?
+	this.tileDisplayDuration = tileDispDuration;
+
+	// how long has the current image been displayed?
+	this.currentDisplayTime = 0;
+
+	// which image is currently being displayed?
+	this.currentTile = 0;
+		
+	this.update = function( milliSec )
+	{
+		this.currentDisplayTime += milliSec;
+		while (this.currentDisplayTime > this.tileDisplayDuration)
+		{
+			this.currentDisplayTime -= this.tileDisplayDuration;
+			this.currentTile++;
+			if (this.currentTile == this.numberOfTiles)
+				this.currentTile = 0;
+			var currentColumn = this.currentTile % this.tilesHorizontal;
+			texture.offset.x = currentColumn / this.tilesHorizontal;
+			var currentRow = Math.floor( this.currentTile / this.tilesHorizontal );
+			texture.offset.y = currentRow / this.tilesVertical;
+		}
+		texture.needsUpdate = true;
+	};
+}
+
 
 var source1, source2, gainNode1, gainNode2;
 
 //music
 function finishedLoading(bufferList){
+
+	//filter
+	var filter = context.createBiquadFilter();
+
 	source1 = context.createBufferSource();
 	source2 = context.createBufferSource();
+	source3 = context.createBufferSource();
+	source4 = context.createBufferSource();
+
 	gainNode1 = context.createGain();
-	gainNode2 = context.createGain(); 
+	gainNode2 = context.createGain();
+	gainNode3 = context.createGain();
+	gainNode4 = context.createGain(); 
 
 	source1.buffer = bufferList[0];
 	source2.buffer = bufferList[1];
+	source3.buffer = bufferList[2];
+	source4.buffer = bufferList[3];
 
 	source1.loop = true;
 	source2.loop = true;
+	source3.loop = true;
+	source4.loop = true;
 
 	source1.connect(gainNode1);
-	gainNode1.connect(context.destination);
+	gainNode1.connect(filter);
+	filter.connect(context.destination);
+	// gainNode1.connect(context.destination);
 
 	source2.connect(gainNode2);
 	gainNode2.connect(context.destination);
 
-	gainNode1.gain.value = 0.5;
-	gainNode2.gain.value = 0;
+	source3.connect(gainNode3);
+	gainNode3.connect(context.destination);
 
-	// source1.start(0);
-	// source2.start(0);
+	source4.connect(gainNode4);
+	gainNode4.connect(context.destination);
+
+	gainNode1.gain.value = 0.6;
+	gainNode2.gain.value = 0;
+	gainNode3.gain.value = 0.5;
+	gainNode4.gain.value = 0.1;
+
+	filter.type = 0;
+	filter.frequency.value = 150;
+
+	source1.start(0);
+	source2.start(0);
+	source3.start(0);
+	source4.start(0);
 }
 
 
@@ -735,6 +1188,9 @@ function animate(){
 }
 
 function render(){
+	
+	TWEEN.update();
+
 	renderer.render(scene, camera);
 }
 
@@ -748,10 +1204,21 @@ var collideL = false;
 
 
 function update(){
+
+	var time = clock.getElapsedTime(),
+		delta = clock.getDelta();
+	//TEXTURE
+	// think.update(1000*delta);
+	// think.needsUpdate = true;
+	// thinker.material.needsUpdate = true;
+	// thinker.material.map.needsUpdate = true;
+	
+	
 	// controls.update();
 	stats.update();
-
 	// console.log(camera.rotation);
+	
+	
 
 	//POINTER_LOCKER
 	// pointerControls.isOnObject(false);
@@ -773,8 +1240,9 @@ function update(){
 	pointerControls.update();
 
 	//SHOW_LOC
-	if(pointerControls.toShow())
-		console.log(pointerControls.posX() + ", " + pointerControls.posZ());
+	// if(pointerControls.toShow())
+		// console.log(pointerControls.posX() + ", " + pointerControls.posZ());
+
 
 	//DUMMY
 	dummy.position.set(pointerControls.posX(), pointerControls.posY()+1.7, pointerControls.posZ());
@@ -823,7 +1291,12 @@ function update(){
 	}
 
 	//RABBITS
-	var running = Math.abs(sinWave.run());
+	var swinging = sinWave.run();
+
+	var rotatingA = sinWaveSlowA.run();
+	var rotatingB = sinWaveSlowB.run();
+
+	var running = Math.abs(swinging);
 	rabbit.position.y = running;
 
 	// for(var i=0; i<rabbits.length; ++i){
@@ -833,16 +1306,88 @@ function update(){
 		// 	rabbits[i].position.y = 0;
 	// }
 
+	//COOKIE
+	if(cookieSwing) {
+		cookie.position.y = running/5+1;
+		cookieArmA.rotation.x = swinging/3;
+		cookieArmB.rotation.z = swinging/3;
+	} else {
+		cookieArmA.rotation.x = swinging/7;
+		cookieArmB.rotation.z = swinging/7;
+	}
 
-	/*
+	//CLOUDS
+	for(var i=0; i<clouds.length; i++){
+		clouds[i].position.x += Math.random()*0.01 + 0.01;
+		clouds[i].position.z += Math.random()*0.01 + 0.01;
+
+		if(clouds[i].position.x > 70)
+			clouds[i].position.x = -70;
+
+		if(clouds[i].position.z > 70)
+			clouds[i].position.z = -70;
+	}
+
+	//LIGHT
+	if(decreaseLight == true)
+		dirLightA.intensity -= 0.001;
+	
+	dirLightC.target.position.set(rotatingA*30,0,rotatingB*30);
+
+	
 	//CLOCK
 	spin = 0.05*tanWave.run();
-	// if(timeClock){
-		timeClock.rotation.y = spin + Math.PI/3;
-		timeClock.rotation.z = spin;
-	// }
-	*/
 
+	for(var i=0; i<timeClocks.length; i++){
+		timeClocks[i].rotation.y = spin + Math.PI/3;
+		timeClocks[i].rotation.z = spin;
+	}
+
+	if(rabbitPress9th == true){
+		sugarA.rotation.y = spin + Math.PI/3;
+		sugarA.rotation.z = spin;
+		sugarB.rotation.y = spin + Math.PI/3;
+		sugarB.rotation.z = spin;
+		sugarC.rotation.y = spin + Math.PI/3;
+		sugarC.rotation.z = spin;
+	}
+	
+
+	
+	//GAIN_TIME
+	for(var i=0; i<timeClocks.length; i++){
+		if(timeClocks[i].position.x-1 < pointerControls.posX()
+			&& timeClocks[i].position.x+1 > pointerControls.posX()
+			&& timeClocks[i].position.z-1 < pointerControls.posZ()
+			&& timeClocks[i].position.z+1 > pointerControls.posZ()
+			)
+		{
+			console.log(i + "hit, " + timeClocks.length);
+
+			dirLightA.intensity = 1;
+
+			// source6.start();
+			// gainNode6.gain.value = 1;
+			scene.remove(timeClocks[i]);
+			timeClocks.splice(i,1);
+
+			//sound
+			// source6 = context.createBufferSource();
+			// source6.buffer = bufferCarrot;
+			// source6.loop = false;
+			// source6.connect(context.destination);
+			// source6.start(time);
+
+			// document.getElementById('other').innerHTML = clues[carrotCount];
+			// carrotCount++;
+
+			// if(carrotCount == 7){
+			// 	door.scale.set(1,1,1);
+			// 	door.position.set(0, 0, -5);
+			// }
+		}
+
+	}
 
 	// if(rabbitsGroup != null){
 	// 	rabbitsGroup.position.y += dropSpeed;
@@ -855,45 +1400,165 @@ function update(){
 
 	// console.log(rabbits.length);
 
-	/*
-	//keyboard_Control
+
+
 	//----------------------------------------------------
+	//----------------------------------------------------
+	//----------------------------------------------------
+	//KEYBOARD_CONTROL
+	//TALK_TO_COOKIE
 	keyboard.update();
-	if(keyboard.pressed("down")){
-		if(dropSpeed<=12)
-			dropSpeed += 0.1;
-		if(gainNode1.gain.value>0) 
-			gainNode1.gain.value -= 0.005;
-		if(gainNode2.gain.value<1)
-			gainNode2.gain.value += 0.005;
+	if(keyboard.down("space")){
+		console.log(pointerControls.posX() + ", " + pointerControls.posY() + ", " + pointerControls.posZ());
 
-		if(tanWave.frequency<2)
-			tanWave.frequency += 0.002;
-	}
-	if(keyboard.pressed("up")){
-		if(dropSpeed>2)
-			dropSpeed -= 0.1;
-		if(gainNode1.gain.value<1) 
-			gainNode1.gain.value += 0.005;
-		if(gainNode2.gain.value>0)
-			gainNode2.gain.value -= 0.005;
+		if(pointerControls.posX()>20.2 && pointerControls.posX()<22.8 &&
+			pointerControls.posZ()>34.3 && pointerControls.posZ()<35.8){
+			if(cookieSpacePress1st == false){
+				cookieSwing = false;
+				document.getElementById('other').innerHTML = "WHAT";
 
-		if(tanWave.frequency>0.01)
-			tanWave.frequency -= 0.006;
+				// new TWEEN.Tween(cookie.position).to(
+				// 	{x: 22.6, y: 1.3, z: 30.5}, 2000).easing( TWEEN.Easing.Elastic.Out).start();
+
+				cookieSpacePress1st = true;
+			} else if (cookieSpacePress2nd == false){
+				document.getElementById('other').innerHTML = "People have got to learn:<br>if they don't have cookies in the cookie jar,<br>they can't eat cookies.";
+				cookieSpacePress2nd = true;
+			} else if (cookieSpacePress3rd == false){
+				document.getElementById('other').innerHTML = "Get ready to be lost.<br>Oh wait<br>You already are.";
+				cookieSpacePress3rd = true;
+			} else if (cookieSpacePress4th == false){
+				document.getElementById('other').innerHTML = "";
+				document.getElementById('stop').innerHTML = "Would you tell me, please,<br> which way I ought to go from here?";
+				cookieSpacePress4th = true;
+			} else if (cookieSpacePress5th == false){
+				document.getElementById('other').innerHTML = "That depends a good deal on where you want to get to.";
+				document.getElementById('stop').innerHTML = "";
+				cookieSpacePress5th = true;
+			} else if (cookieSpacePress6th == false){
+				document.getElementById('other').innerHTML = "";
+				document.getElementById('stop').innerHTML = "I don't much care where-";
+				cookieSpacePress6th = true;
+			} else if (cookieSpacePress7th == false){
+				document.getElementById('other').innerHTML = "Then it doesn't matter which way you go.";
+				document.getElementById('stop').innerHTML = "";
+				cookieSpacePress7th = true;
+			} else if (cookieSpacePress8th == false){
+				document.getElementById('other').innerHTML = "";
+				// document.getElementById('stop').innerHTML = "";
+				cookieSwing = true;
+				cookieSpacePress8th = true;
+			} else if (cookieSpacePress9th == false){
+				cookieSpacePress9th = true;
+			} else if (cookieSpacePress10th == false){
+				cookieSpacePress10th = true;
+			} else if (cookieSpacePress11th == false){
+				cookieSwing = false;
+				document.getElementById('other').innerHTML = "Just get in the Maze!";
+				cookieSpacePress11th = true;
+			} else if (cookieSpacePress12th == false){
+				document.getElementById('other').innerHTML = "And enjoy the lost.";
+				cookieSpacePress12th = true;
+			} else if (cookieSpacePress13th == false){
+				document.getElementById('other').innerHTML = "Oh right.<br>Get a clock if you feel it's too dark.";
+				cookieSpacePress13th = true;
+			} else if (cookieSpacePress14th == false){
+				cookieSwing = true;
+				document.getElementById('other').innerHTML = "";
+				cookieSpacePress14th = true;
+			}
+
+			if(cookieSpacePress14th == true){
+				cookieSwing = !cookieSwing;
+				if(cookieSwing)
+					document.getElementById('other').innerHTML = "";
+				else
+					document.getElementById('other').innerHTML = "I've nothing to say";
+			} 
+		}
+
+
+		if(pointerControls.posX()>4.9 && pointerControls.posX()<7.1 &&
+			pointerControls.posZ()>0.2 && pointerControls.posZ()<3.4){
+			if(rabbitPress1st == false){
+				cookieSwing = false;
+				document.getElementById('other').innerHTML = "Hi";
+				gainNode2.gain.value = 1;
+
+				rabbitPress1st = true;
+			} else if (rabbitPress2nd == false){
+				document.getElementById('other').innerHTML = "Again";
+				rabbitPress2nd = true;
+			} else if (rabbitPress3rd == false){
+				document.getElementById('other').innerHTML = "If you don't know where you are going,<br>any road will take you there.";
+
+				rabbitPress3rd = true;
+			} else if (rabbitPress4th == false){
+				document.getElementById('other').innerHTML = "Are you enjoying being lost now?";
+				gainNode2.gain.value = 0;
+
+				// document.getElementById('stop').innerHTML = "Would you tell me, please,<br> which way I ought to go from here?";
+				rabbitPress4th = true;
+			} else if (rabbitPress5th == false){
+				document.getElementById('other').innerHTML = "Do you need coffee? I'm drinking one now.";
+				rabbitPress5th = true;
+			} else if (rabbitPress6th == false){
+				document.getElementById('other').innerHTML = "";
+				document.getElementById('stop').innerHTML = "Sure.";
+				rabbitPress6th = true;
+			} else if (rabbitPress7th == false){
+				document.getElementById('other').innerHTML = "Coffee...<br>We can sleep when we're dead.";
+				document.getElementById('stop').innerHTML = "";
+				rabbitPress7th = true;
+			} else if (rabbitPress8th == false){
+				document.getElementById('other').innerHTML = "Then, which sugar cube would you like?";
+				// document.getElementById('stop').innerHTML = "";
+
+				rabbitPress8th = true;
+			} else if (rabbitPress9th == false){
+				document.getElementById('other').innerHTML = "";
+
+				//SUGARS_FLY
+				new TWEEN.Tween(sugarA.position).to(
+					{x: 11.58, y: 1.3, z: -2.98}, 2000).easing( TWEEN.Easing.Elastic.Out).start();
+				new TWEEN.Tween(sugarC.position).to(
+					{x: 9, y: 1.3, z: 1.86}, 2000).easing( TWEEN.Easing.Elastic.Out).start();
+				new TWEEN.Tween(sugarB.position).to(
+					{x: 10.61, y: 1.3, z: 7.12}, 2000).easing( TWEEN.Easing.Elastic.Out).start();
+
+				rabbitPress9th = true;
+			} else if (rabbitPress10th == false){
+				document.getElementById('other').innerHTML = "Red, green, or blue?";
+				rabbitPress10th = true;
+			} 
+
+			// else if (rabbitPress11th == false){
+			// 	rabbitPress11th = true;
+			// 	document.getElementById('other').innerHTML = "Red, green, or blue?";
+			// 	document.getElementById('other').innerHTML = "Just get in the Maze!";
+			// } else if (rabbitPress12th == false){
+			// 	document.getElementById('other').innerHTML = "And enjoy the lost.";
+			// 	rabbitPress12th = true;
+			// } else if (rabbitPress13th == false){
+			// 	document.getElementById('other').innerHTML = "Oh right.<br>Get a clock if you feel it's too dark.";
+			// 	rabbitPress13th = true;
+			// } else if (rabbitPress14th == false){
+			// 	cookieSwing = true;
+			// 	document.getElementById('other').innerHTML = "";
+			// 	rabbitPress14th = true;
+			// }
+
+			// if(rabbitPress14th == true){
+			// 	cookieSwing = !cookieSwing;
+			// 	if(cookieSwing)
+			// 		document.getElementById('other').innerHTML = "";
+			// 	else
+			// 		document.getElementById('other').innerHTML = "I've nothing to say";
+			// } 
+		}
+
 	}
-	if(keyboard.down("r")){
-		dropSpeed = 1;
-		timeClock.frequency = 0.01;
-		gainNode1.gain.value = 1;
-		gainNode2.gain.value = 0;
-	}
-	if(keyboard.down("S")){
-		msg.voice = voices[20];
-		msg.rate = 0.5;
-		msg.pitch = 2;
-		// window.speechSynthesis.speak(msg);
-	}
-	*/
+	
 
 
 }
@@ -903,3 +1568,4 @@ function onWindowResize(){
 	camera.updateProjectionMatrix();
 	renderer.setSize(window.innerWidth, window.innerHeight);
 }
+

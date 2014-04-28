@@ -9,7 +9,6 @@ THREE.PointerLockControls = function ( camera ) {
 	// var rotatable = false;
 
 	// camera.position.set(0, 3.472, 6.94);
-	//0,6,3
 	// camera.rotation.set(-0.463,0,0);
 	// camera.rotation.set( 0, 0, 0 );
 
@@ -18,6 +17,16 @@ THREE.PointerLockControls = function ( camera ) {
 
 	var yawObject = new THREE.Object3D();
 	// yawObject.position.y = 2;
+
+	//FOR_TV
+	// yawObject.position.x = -23;
+	// yawObject.position.z = 5;
+	// yawObject.rotation.y = -1.51;
+
+	//FOR_MAZE
+	// yawObject.position.x = 17.4;
+	// yawObject.position.z = 43.5;
+	
 	yawObject.add( pitchObject );
 
 	var moveForward = false;
@@ -206,6 +215,14 @@ THREE.PointerLockControls = function ( camera ) {
 		return yawObject.position.y;
 	};
 
+	this.setPosX = function(newX){
+		yawObject.position.x = newX;
+	};
+
+	this.setPosY = function(newY){
+		yawObject.position.y = newY;
+	};
+
 	var changetPosY = function(moveY){
 		yawObject.position.y += moveY;
 	};
@@ -219,7 +236,7 @@ THREE.PointerLockControls = function ( camera ) {
 	};
 
 	this.rotY = function(){
-		return pitchObject.rotation.y;
+		return yawObject.rotation.y;
 	};
 
 	this.rotZ = function(){
